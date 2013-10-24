@@ -14,11 +14,9 @@ import (
 	"time"
 )
 
-const infoUrlBase = `http://localhost:8000`
+const infoUrlBase = `http://169.254.169.254`
 const metadataUrlBase = infoUrlBase + `/latest/meta-data`
-const credsUrlBase = metadataUrlBase + `/iam/security-credentials/`
 
-var iamRole string
 var splitCommas bool
 
 type InstanceIdentity struct {
@@ -26,15 +24,7 @@ type InstanceIdentity struct {
 	Region     string
 }
 
-type credentials struct {
-	AccessKeyId     string
-	SecretAccessKey string
-	Token           string
-	Expiration      time.Time
-}
-
 func init() {
-	flag.StringVar(&iamRole, "role", "ec2metaread", "IAM role to query")
 	flag.BoolVar(&splitCommas, "s", false, "splits multiple values by comma")
 }
 
@@ -58,15 +48,6 @@ func getInfo(url string) (body []byte) {
 func getInstanceIdentity() (id InstanceIdentity) {
 	body := getInfo(infoUrlBase + `/latest/dynamic/instance-identity/document`)
 	err := json.Unmarshal(body, &id)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	return
-}
-
-func getCreds() (creds credentials) {
-	body := getInfo(credsUrlBase + iamRole)
-	err := json.Unmarshal(body, &creds)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -98,9 +79,7 @@ func main() {
 		log.Fatalf("Instance is in unknown region: %s\n", id.Region)
 	}
 
-	creds := getCreds()
-	auth, err := aws.GetAuth(
-		creds.AccessKeyId, creds.SecretAccessKey, creds.Token, creds.Expiration)
+	auth, err := aws.GetAuth("", "", "", time.Time{})
 	if err != nil {
 		log.Fatalln(err)
 	}
